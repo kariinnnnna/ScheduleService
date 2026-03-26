@@ -15,13 +15,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ScheduleServiceBusinessLogic\ScheduleServiceBusinessLogic.csproj" />
     <ProjectReference Include="..\ScheduleServiceContracts\ScheduleServiceContracts.csproj" />
     <ProjectReference Include="..\ScheduleServiceDatabaseImplement\ScheduleServiceDatabaseImplement.csproj" />
     <ProjectReference Include="..\ScheduleServiceDataModels\ScheduleServiceDataModels.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Controllers\" />
   </ItemGroup>
 
 </Project>

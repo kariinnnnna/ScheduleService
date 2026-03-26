@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ScheduleServiceDatabaseImpl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScheduleServiceRestApi", "ScheduleServiceRestApi\ScheduleServiceRestApi.csproj", "{C7191A8C-3DA9-4B5B-8C5D-11553D9E12B2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScheduleServiceBusinessLogic", "ScheduleServiceBusinessLogic\ScheduleServiceBusinessLogic.csproj", "{4F5DC187-1909-4D2B-A568-E3D53C8A8453}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{C7191A8C-3DA9-4B5B-8C5D-11553D9E12B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C7191A8C-3DA9-4B5B-8C5D-11553D9E12B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C7191A8C-3DA9-4B5B-8C5D-11553D9E12B2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4F5DC187-1909-4D2B-A568-E3D53C8A8453}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4F5DC187-1909-4D2B-A568-E3D53C8A8453}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4F5DC187-1909-4D2B-A568-E3D53C8A8453}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4F5DC187-1909-4D2B-A568-E3D53C8A8453}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
