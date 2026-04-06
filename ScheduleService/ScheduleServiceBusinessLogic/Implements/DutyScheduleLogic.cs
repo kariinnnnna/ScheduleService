@@ -110,6 +110,16 @@ namespace ScheduleServiceBusinessLogic.Implements
                 throw new ArgumentNullException(nameof(model));
             }
 
+            if (model.Date == default)
+            {
+                throw new ArgumentException("Не указана дата");
+            }
+
+            if (!model.LessonTimeId.HasValue || model.LessonTimeId.Value <= 0)
+            {
+                throw new ArgumentException("Не указано время пары");
+            }
+
             if (model.DutyPersonId <= 0)
             {
                 throw new ArgumentException("Не указан дежурный");
@@ -125,29 +135,14 @@ namespace ScheduleServiceBusinessLogic.Implements
                 throw new InvalidOperationException("Указанный дежурный не найден");
             }
 
-            if (model.LessonTimeId.HasValue)
+            var lessonTime = _lessonTimeStorage.GetElement(new LessonTimeSearchModel
             {
-                var lessonTime = _lessonTimeStorage.GetElement(new LessonTimeSearchModel
-                {
-                    Id = model.LessonTimeId.Value
-                });
+                Id = model.LessonTimeId.Value
+            });
 
-                if (lessonTime == null)
-                {
-                    throw new InvalidOperationException("Указанное время пары не найдено");
-                }
-            }
-            else
+            if (lessonTime == null)
             {
-                if (!model.StartTime.HasValue || !model.EndTime.HasValue)
-                {
-                    throw new ArgumentException("Нужно указать время начала и окончания дежурства");
-                }
-
-                if (model.StartTime.Value >= model.EndTime.Value)
-                {
-                    throw new ArgumentException("Время начала дежурства должно быть меньше времени окончания");
-                }
+                throw new InvalidOperationException("Указанное время пары не найдено");
             }
         }
     }

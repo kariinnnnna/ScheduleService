@@ -12,7 +12,7 @@ using ScheduleServiceDatabaseImplement;
 namespace ScheduleServiceDatabaseImplement.Migrations
 {
     [DbContext(typeof(ScheduleServiceDatabase))]
-    [Migration("20260326195353_InitialCreate")]
+    [Migration("20260402070147_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -24,44 +24,6 @@ namespace ScheduleServiceDatabaseImplement.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("ScheduleServiceDatabaseImplement.Models.Classroom", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("Capacity")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("CoreSystemId")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("NotUseInSchedule")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Number")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CoreSystemId")
-                        .IsUnique();
-
-                    b.HasIndex("Number");
-
-                    b.ToTable("classrooms", null, t =>
-                        {
-                            t.HasComment("Аудитории");
-                        });
-                });
 
             modelBuilder.Entity("ScheduleServiceDatabaseImplement.Models.DutyPerson", b =>
                 {
@@ -260,8 +222,6 @@ namespace ScheduleServiceDatabaseImplement.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ClassroomId");
-
                     b.HasIndex("Date");
 
                     b.HasIndex("GroupId");
@@ -325,11 +285,6 @@ namespace ScheduleServiceDatabaseImplement.Migrations
 
             modelBuilder.Entity("ScheduleServiceDatabaseImplement.Models.ScheduleItem", b =>
                 {
-                    b.HasOne("ScheduleServiceDatabaseImplement.Models.Classroom", "Classroom")
-                        .WithMany("ScheduleItems")
-                        .HasForeignKey("ClassroomId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("ScheduleServiceDatabaseImplement.Models.Group", "Group")
                         .WithMany("ScheduleItems")
                         .HasForeignKey("GroupId")
@@ -345,18 +300,11 @@ namespace ScheduleServiceDatabaseImplement.Migrations
                         .HasForeignKey("TeacherId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.Navigation("Classroom");
-
                     b.Navigation("Group");
 
                     b.Navigation("LessonTime");
 
                     b.Navigation("Teacher");
-                });
-
-            modelBuilder.Entity("ScheduleServiceDatabaseImplement.Models.Classroom", b =>
-                {
-                    b.Navigation("ScheduleItems");
                 });
 
             modelBuilder.Entity("ScheduleServiceDatabaseImplement.Models.DutyPerson", b =>

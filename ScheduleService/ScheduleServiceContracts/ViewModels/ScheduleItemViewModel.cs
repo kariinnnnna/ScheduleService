@@ -40,5 +40,6 @@ namespace ScheduleServiceContracts.ViewModels
         public string? TeacherName { get; set; }
 
         public string? Comment { get; set; }
+        public bool IsImported { get; set; }
     }
 }

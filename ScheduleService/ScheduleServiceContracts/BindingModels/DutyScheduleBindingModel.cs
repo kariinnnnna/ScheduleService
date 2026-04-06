@@ -17,21 +17,15 @@ namespace ScheduleServiceContracts.BindingModels
         [Display(Name = "Дата")]
         public DateTime Date { get; set; }
 
+        [Required(ErrorMessage = "Пара обязательна")]
+        [Range(1, int.MaxValue, ErrorMessage = "Некорректное время пары")]
         [Display(Name = "ID времени пары")]
         public int? LessonTimeId { get; set; }
 
-        [Display(Name = "Время начала")]
         public TimeSpan? StartTime { get; set; }
-
-        [Display(Name = "Время окончания")]
         public TimeSpan? EndTime { get; set; }
 
-        [StringLength(200, ErrorMessage = "Место не должно превышать 200 символов")]
-        [Display(Name = "Место")]
         public string? Place { get; set; }
-
-        [StringLength(1000, ErrorMessage = "Комментарий не должен превышать 1000 символов")]
-        [Display(Name = "Комментарий")]
         public string? Comment { get; set; }
 
         [Required(ErrorMessage = "Дежурный обязателен")]

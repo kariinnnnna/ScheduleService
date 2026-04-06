@@ -14,8 +14,6 @@ namespace ScheduleServiceDatabaseImplement
         {
         }
 
-        public virtual DbSet<Classroom> Classrooms { get; set; }
-
         public virtual DbSet<DutyPerson> DutyPersons { get; set; }
 
         public virtual DbSet<DutySchedule> DutySchedules { get; set; }
@@ -31,21 +29,6 @@ namespace ScheduleServiceDatabaseImplement
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-
-            modelBuilder.Entity<Classroom>(entity =>
-            {
-                entity.ToTable("classrooms");
-
-                entity.HasKey(e => e.Id);
-
-                entity.Property(e => e.CoreSystemId).IsRequired();
-                entity.Property(e => e.Number).IsRequired().HasMaxLength(50);
-                entity.Property(e => e.Capacity).IsRequired();
-                entity.Property(e => e.NotUseInSchedule).IsRequired();
-
-                entity.HasIndex(e => e.CoreSystemId).IsUnique();
-                entity.HasIndex(e => e.Number);
-            });
 
             modelBuilder.Entity<DutyPerson>(entity =>
             {
@@ -132,11 +115,6 @@ namespace ScheduleServiceDatabaseImplement
                 entity.Property(e => e.GroupName).HasMaxLength(100);
                 entity.Property(e => e.TeacherName).HasMaxLength(200);
                 entity.Property(e => e.Comment).HasMaxLength(1000);
-
-                entity.HasOne(e => e.Classroom)
-                    .WithMany(e => e.ScheduleItems)
-                    .HasForeignKey(e => e.ClassroomId)
-                    .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(e => e.Group)
                     .WithMany(e => e.ScheduleItems)

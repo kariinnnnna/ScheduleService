@@ -60,5 +60,6 @@ namespace ScheduleServiceContracts.BindingModels
         [StringLength(1000, ErrorMessage = "Комментарий не должен превышать 1000 символов")]
         [Display(Name = "Комментарий")]
         public string? Comment { get; set; }
+        public bool IsImported { get; set; }
     }
 }

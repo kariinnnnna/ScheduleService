@@ -20,5 +20,6 @@ namespace ScheduleServiceContracts.BusinessLogicContracts
         ScheduleItemViewModel? Update(ScheduleItemBindingModel model);
 
         bool Delete(ScheduleItemBindingModel model);
+
     }
 }

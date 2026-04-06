@@ -24,7 +24,6 @@ namespace ScheduleServiceDatabaseImplement.Implements
         public List<ScheduleItemViewModel> GetFullList()
         {
             return _context.ScheduleItems
-                .Include(x => x.Classroom)
                 .Include(x => x.Group)
                 .Include(x => x.Teacher)
                 .Include(x => x.LessonTime)
@@ -40,7 +39,6 @@ namespace ScheduleServiceDatabaseImplement.Implements
             }
 
             var query = _context.ScheduleItems
-                .Include(x => x.Classroom)
                 .Include(x => x.Group)
                 .Include(x => x.Teacher)
                 .Include(x => x.LessonTime)
@@ -104,7 +102,6 @@ namespace ScheduleServiceDatabaseImplement.Implements
             }
 
             var entity = _context.ScheduleItems
-                .Include(x => x.Classroom)
                 .Include(x => x.Group)
                 .Include(x => x.Teacher)
                 .Include(x => x.LessonTime)
@@ -129,7 +126,8 @@ namespace ScheduleServiceDatabaseImplement.Implements
                 GroupName = model.GroupName,
                 TeacherId = model.TeacherId,
                 TeacherName = model.TeacherName,
-                Comment = model.Comment
+                Comment = model.Comment,
+                IsImported = model.IsImported
             };
 
             _context.ScheduleItems.Add(entity);
@@ -159,6 +157,7 @@ namespace ScheduleServiceDatabaseImplement.Implements
             entity.TeacherId = model.TeacherId;
             entity.TeacherName = model.TeacherName;
             entity.Comment = model.Comment;
+            entity.IsImported = model.IsImported;
 
             _context.SaveChanges();
 
@@ -168,7 +167,6 @@ namespace ScheduleServiceDatabaseImplement.Implements
         public ScheduleItemViewModel? Delete(ScheduleItemBindingModel model)
         {
             var entity = _context.ScheduleItems
-                .Include(x => x.Classroom)
                 .Include(x => x.Group)
                 .Include(x => x.Teacher)
                 .Include(x => x.LessonTime)
@@ -195,17 +193,50 @@ namespace ScheduleServiceDatabaseImplement.Implements
                 Date = entity.Date,
                 Subject = entity.Subject,
                 LessonTimeId = entity.LessonTimeId,
-                PairNumber = entity.LessonTime?.PairNumber,
+                PairNumber = entity.LessonTime != null
+    ? entity.LessonTime.PairNumber
+    : GetPairNumberByTime(
+        entity.LessonTimeId.HasValue ? entity.LessonTime?.StartTime : entity.StartTime,
+        entity.LessonTimeId.HasValue ? entity.LessonTime?.EndTime : entity.EndTime),
                 StartTime = entity.LessonTimeId.HasValue ? entity.LessonTime?.StartTime : entity.StartTime,
                 EndTime = entity.LessonTimeId.HasValue ? entity.LessonTime?.EndTime : entity.EndTime,
                 ClassroomId = entity.ClassroomId,
-                ClassroomNumber = entity.Classroom != null ? entity.Classroom.Number : entity.ClassroomNumber,
+                ClassroomNumber = entity.ClassroomNumber,
                 GroupId = entity.GroupId,
                 GroupName = entity.Group != null ? entity.Group.GroupName : entity.GroupName,
                 TeacherId = entity.TeacherId,
                 TeacherName = entity.Teacher != null ? entity.Teacher.TeacherName : entity.TeacherName,
-                Comment = entity.Comment
+                Comment = entity.Comment,
+                IsImported = entity.IsImported
             };
+        }
+        private static int? GetPairNumberByTime(TimeSpan? startTime, TimeSpan? endTime)
+        {
+            if (!startTime.HasValue || !endTime.HasValue)
+                return null;
+
+            if (startTime == TimeSpan.Parse("08:30") && endTime == TimeSpan.Parse("09:50")) return 1;
+            if (startTime == TimeSpan.Parse("10:00") && endTime == TimeSpan.Parse("11:20")) return 2;
+            if (startTime == TimeSpan.Parse("11:30") && endTime == TimeSpan.Parse("12:50")) return 3;
+            if (startTime == TimeSpan.Parse("13:30") && endTime == TimeSpan.Parse("14:50")) return 4;
+            if (startTime == TimeSpan.Parse("15:00") && endTime == TimeSpan.Parse("16:20")) return 5;
+            if (startTime == TimeSpan.Parse("16:30") && endTime == TimeSpan.Parse("17:50")) return 6;
+            if (startTime == TimeSpan.Parse("18:00") && endTime == TimeSpan.Parse("19:20")) return 7;
+            if (startTime == TimeSpan.Parse("19:30") && endTime == TimeSpan.Parse("20:50")) return 8;
+
+            return null;
+        }
+        public void DeleteImported()
+        {
+            var items = _context.ScheduleItems
+                .Where(x => x.IsImported)
+                .ToList();
+
+            if (items.Count == 0)
+                return;
+
+            _context.ScheduleItems.RemoveRange(items);
+            _context.SaveChanges();
         }
     }
 }

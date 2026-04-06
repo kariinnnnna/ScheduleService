@@ -22,5 +22,7 @@ namespace ScheduleServiceContracts.StorageContracts
         ScheduleItemViewModel? Update(ScheduleItemBindingModel model);
 
         ScheduleItemViewModel? Delete(ScheduleItemBindingModel model);
+
+        void DeleteImported();
     }
 }

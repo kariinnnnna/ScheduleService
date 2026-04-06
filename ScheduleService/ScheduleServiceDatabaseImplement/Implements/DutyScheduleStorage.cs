@@ -91,7 +91,7 @@ namespace ScheduleServiceDatabaseImplement.Implements
         {
             var entity = new DutySchedule
             {
-                Date = model.Date,
+                Date = DateTime.SpecifyKind(model.Date.Date, DateTimeKind.Utc),
                 LessonTimeId = model.LessonTimeId,
                 StartTime = model.StartTime,
                 EndTime = model.EndTime,

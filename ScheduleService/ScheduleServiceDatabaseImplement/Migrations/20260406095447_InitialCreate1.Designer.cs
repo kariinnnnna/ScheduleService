@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using ScheduleServiceDatabaseImplement;
@@ -11,9 +12,11 @@ using ScheduleServiceDatabaseImplement;
 namespace ScheduleServiceDatabaseImplement.Migrations
 {
     [DbContext(typeof(ScheduleServiceDatabase))]
-    partial class ScheduleServiceDatabaseModelSnapshot : ModelSnapshot
+    [Migration("20260406095447_InitialCreate1")]
+    partial class InitialCreate1
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -195,9 +198,6 @@ namespace ScheduleServiceDatabaseImplement.Migrations
                     b.Property<string>("GroupName")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<bool>("IsImported")
-                        .HasColumnType("boolean");
 
                     b.Property<int?>("LessonTimeId")
                         .HasColumnType("integer");

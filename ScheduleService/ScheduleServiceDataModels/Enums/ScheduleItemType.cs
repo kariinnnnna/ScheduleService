@@ -12,6 +12,7 @@ namespace ScheduleServiceDataModels.Enums
         Practice = 1,
         Laboratory = 2,
         Consultation = 3,
-        Exam = 4
+        Exam = 4,
+        Test = 5,
     }
 }

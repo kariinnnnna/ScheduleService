@@ -83,11 +83,11 @@ namespace ScheduleServiceRestApi.Controllers
         }
 
         [HttpPost]
-        public IActionResult Delete([FromBody] DutyPersonBindingModel model)
+        public IActionResult Delete([FromBody] int id)
         {
             try
             {
-                return Ok(_logic.Delete(model));
+                return Ok(_logic.Delete(new DutyPersonBindingModel { Id = id }));
             }
             catch (Exception ex)
             {

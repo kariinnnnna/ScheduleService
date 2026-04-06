@@ -13,24 +13,6 @@ namespace ScheduleServiceDatabaseImplement.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "classrooms",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    CoreSystemId = table.Column<int>(type: "integer", nullable: false),
-                    Number = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    Type = table.Column<int>(type: "integer", nullable: false),
-                    Capacity = table.Column<int>(type: "integer", nullable: false),
-                    NotUseInSchedule = table.Column<bool>(type: "boolean", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_classrooms", x => x.Id);
-                },
-                comment: "Аудитории");
-
-            migrationBuilder.CreateTable(
                 name: "duty_persons",
                 columns: table => new
                 {
@@ -151,12 +133,6 @@ namespace ScheduleServiceDatabaseImplement.Migrations
                 {
                     table.PrimaryKey("PK_schedule_items", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_schedule_items_classrooms_ClassroomId",
-                        column: x => x.ClassroomId,
-                        principalTable: "classrooms",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
                         name: "FK_schedule_items_groups_GroupId",
                         column: x => x.GroupId,
                         principalTable: "groups",
@@ -176,17 +152,6 @@ namespace ScheduleServiceDatabaseImplement.Migrations
                         onDelete: ReferentialAction.Restrict);
                 },
                 comment: "Элементы расписания");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_classrooms_CoreSystemId",
-                table: "classrooms",
-                column: "CoreSystemId",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_classrooms_Number",
-                table: "classrooms",
-                column: "Number");
 
             migrationBuilder.CreateIndex(
                 name: "IX_duty_schedules_DutyPersonId",
@@ -214,11 +179,6 @@ namespace ScheduleServiceDatabaseImplement.Migrations
                 table: "lesson_times",
                 column: "PairNumber",
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_schedule_items_ClassroomId",
-                table: "schedule_items",
-                column: "ClassroomId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_schedule_items_Date",
@@ -263,9 +223,6 @@ namespace ScheduleServiceDatabaseImplement.Migrations
 
             migrationBuilder.DropTable(
                 name: "duty_persons");
-
-            migrationBuilder.DropTable(
-                name: "classrooms");
 
             migrationBuilder.DropTable(
                 name: "groups");

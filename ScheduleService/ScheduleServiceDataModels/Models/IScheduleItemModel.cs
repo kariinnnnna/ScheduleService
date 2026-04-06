@@ -22,5 +22,6 @@ namespace ScheduleServiceDataModels.Models
         int? TeacherId { get; }
         string? TeacherName { get; }
         string? Comment { get; }
+        bool IsImported { get; }
     }
 }

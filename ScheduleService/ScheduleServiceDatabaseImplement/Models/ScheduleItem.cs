@@ -39,8 +39,7 @@ namespace ScheduleServiceDatabaseImplement.Models
         public string? TeacherName { get; set; }
 
         public string? Comment { get; set; }
-
-        public virtual Classroom? Classroom { get; set; }
+        public bool IsImported { get; set; }
 
         public virtual Group? Group { get; set; }
 

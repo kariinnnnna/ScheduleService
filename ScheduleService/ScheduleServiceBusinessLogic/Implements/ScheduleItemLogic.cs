@@ -14,20 +14,17 @@ namespace ScheduleServiceBusinessLogic.Implements
     public class ScheduleItemLogic : IScheduleItemLogic
     {
         private readonly IScheduleItemStorage _scheduleItemStorage;
-        private readonly IClassroomStorage _classroomStorage;
         private readonly IGroupStorage _groupStorage;
         private readonly ITeacherStorage _teacherStorage;
         private readonly ILessonTimeStorage _lessonTimeStorage;
 
         public ScheduleItemLogic(
             IScheduleItemStorage scheduleItemStorage,
-            IClassroomStorage classroomStorage,
             IGroupStorage groupStorage,
             ITeacherStorage teacherStorage,
             ILessonTimeStorage lessonTimeStorage)
         {
             _scheduleItemStorage = scheduleItemStorage;
-            _classroomStorage = classroomStorage;
             _groupStorage = groupStorage;
             _teacherStorage = teacherStorage;
             _lessonTimeStorage = lessonTimeStorage;
@@ -53,6 +50,7 @@ namespace ScheduleServiceBusinessLogic.Implements
         public ScheduleItemViewModel? Create(ScheduleItemBindingModel model)
         {
             ValidateModel(model);
+            ValidateClassroomAvailability(model);
 
             return _scheduleItemStorage.Insert(model);
         }
@@ -80,6 +78,7 @@ namespace ScheduleServiceBusinessLogic.Implements
             }
 
             ValidateModel(model);
+            ValidateClassroomAvailability(model);
 
             return _scheduleItemStorage.Update(model);
         }
@@ -148,14 +147,9 @@ namespace ScheduleServiceBusinessLogic.Implements
 
             if (model.ClassroomId.HasValue)
             {
-                var classroom = _classroomStorage.GetElement(new ClassroomSearchModel
+                if (model.ClassroomId <= 0)
                 {
-                    Id = model.ClassroomId.Value
-                });
-
-                if (classroom == null)
-                {
-                    throw new InvalidOperationException("Указанная аудитория не найдена");
+                    throw new Exception("Некорректная аудитория");
                 }
             }
             else if (string.IsNullOrWhiteSpace(model.ClassroomNumber))
@@ -196,6 +190,105 @@ namespace ScheduleServiceBusinessLogic.Implements
             {
                 throw new ArgumentException("Не указан преподаватель");
             }
+        }
+        private void ValidateClassroomAvailability(ScheduleItemBindingModel model)
+        {
+            var allItems = _scheduleItemStorage.GetFullList() ?? new List<ScheduleItemViewModel>();
+
+            var currentStart = GetStartTime(model);
+            var currentEnd = GetEndTime(model);
+
+            var sameDateItems = allItems.Where(x => x.Date.Date == model.Date.Date);
+
+            IEnumerable<ScheduleItemViewModel> sameClassroomItems;
+
+            if (model.ClassroomId.HasValue)
+            {
+                sameClassroomItems = sameDateItems.Where(x => x.ClassroomId == model.ClassroomId.Value);
+            }
+            else
+            {
+                var classroomNumber = (model.ClassroomNumber ?? string.Empty).Trim();
+                sameClassroomItems = sameDateItems.Where(x =>
+                    !string.IsNullOrWhiteSpace(x.ClassroomNumber) &&
+                    x.ClassroomNumber.Trim().Equals(classroomNumber, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (model.Id > 0)
+            {
+                sameClassroomItems = sameClassroomItems.Where(x => x.Id != model.Id);
+            }
+
+            foreach (var item in sameClassroomItems)
+            {
+                var existingStart = item.StartTime;
+                var existingEnd = item.EndTime;
+
+                if (!existingStart.HasValue || !existingEnd.HasValue)
+                    continue;
+
+                var isIntersected = currentStart < existingEnd.Value && currentEnd > existingStart.Value;
+
+                if (isIntersected)
+                {
+                    var classroomText = !string.IsNullOrWhiteSpace(item.ClassroomNumber)
+                        ? item.ClassroomNumber
+                        : "указанной аудитории";
+
+                    throw new InvalidOperationException(
+                        $"Аудитория {classroomText} уже занята на {model.Date:dd.MM.yyyy} " +
+                        $"с {existingStart:hh\\:mm} до {existingEnd:hh\\:mm}.");
+                }
+            }
+        }
+        private TimeSpan GetStartTime(ScheduleItemBindingModel model)
+        {
+            if (model.LessonTimeId.HasValue)
+            {
+                var lessonTime = _lessonTimeStorage.GetElement(new LessonTimeSearchModel
+                {
+                    Id = model.LessonTimeId.Value
+                });
+
+                if (lessonTime == null)
+                {
+                    throw new InvalidOperationException("Не удалось определить время начала пары.");
+                }
+
+                return lessonTime.StartTime;
+            }
+
+            if (!model.StartTime.HasValue)
+            {
+                throw new ArgumentException("Не указано время начала.");
+            }
+
+            return model.StartTime.Value;
+        }
+
+        private TimeSpan GetEndTime(ScheduleItemBindingModel model)
+        {
+            if (model.LessonTimeId.HasValue)
+            {
+                var lessonTime = _lessonTimeStorage.GetElement(new LessonTimeSearchModel
+                {
+                    Id = model.LessonTimeId.Value
+                });
+
+                if (lessonTime == null)
+                {
+                    throw new InvalidOperationException("Не удалось определить время окончания пары.");
+                }
+
+                return lessonTime.EndTime;
+            }
+
+            if (!model.EndTime.HasValue)
+            {
+                throw new ArgumentException("Не указано время окончания.");
+            }
+
+            return model.EndTime.Value;
         }
     }
 }
