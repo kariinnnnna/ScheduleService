@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using ScheduleServiceBusinessLogic.Helpers;
 using ScheduleServiceBusinessLogic.Implements;
 using ScheduleServiceContracts.BusinessLogicContracts;
 using ScheduleServiceContracts.StorageContracts;
@@ -24,7 +25,20 @@ builder.Services.AddScoped<ILessonTimeLogic, LessonTimeLogic>();
 builder.Services.AddScoped<IScheduleItemLogic, ScheduleItemLogic>();
 builder.Services.AddScoped<IUniversityScheduleLogic, UniversityScheduleLogic>();
 builder.Services.AddScoped<ITeacherLogic, TeacherLogic>();
-builder.Services.AddScoped<IUniversityScheduleLogic, UniversityScheduleLogic>();
+
+builder.Services.AddHttpClient<CoreApiService>(client =>
+{
+    var baseUrl = builder.Configuration["CoreApi:BaseUrl"];
+    if (string.IsNullOrWhiteSpace(baseUrl))
+    {
+        throw new InvalidOperationException("Не настроен CoreApi:BaseUrl");
+    }
+
+    client.BaseAddress = new Uri(baseUrl.EndsWith("/") ? baseUrl : baseUrl + "/");
+});
+
+builder.Services.AddTransient<ICoreImportLogic, CoreImportLogic>();
+
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
