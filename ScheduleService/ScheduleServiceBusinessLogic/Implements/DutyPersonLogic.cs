@@ -44,15 +44,9 @@ namespace ScheduleServiceBusinessLogic.Implements
                 throw new ArgumentNullException(nameof(model));
             }
 
-            if (string.IsNullOrWhiteSpace(model.LastName))
-            {
-                throw new ArgumentException("Не указана фамилия дежурного");
-            }
-
-            if (string.IsNullOrWhiteSpace(model.FirstName))
-            {
-                throw new ArgumentException("Не указано имя дежурного");
-            }
+            NormalizeModel(model);
+            ValidateModel(model);
+            CheckDuplicates(model);
 
             return _dutyPersonStorage.Insert(model);
         }
@@ -69,15 +63,8 @@ namespace ScheduleServiceBusinessLogic.Implements
                 throw new ArgumentException("Не указан идентификатор дежурного");
             }
 
-            if (string.IsNullOrWhiteSpace(model.LastName))
-            {
-                throw new ArgumentException("Не указана фамилия дежурного");
-            }
-
-            if (string.IsNullOrWhiteSpace(model.FirstName))
-            {
-                throw new ArgumentException("Не указано имя дежурного");
-            }
+            NormalizeModel(model);
+            ValidateModel(model);
 
             var element = _dutyPersonStorage.GetElement(new DutyPersonSearchModel
             {
@@ -88,6 +75,8 @@ namespace ScheduleServiceBusinessLogic.Implements
             {
                 throw new InvalidOperationException("Дежурный не найден");
             }
+
+            CheckDuplicates(model);
 
             return _dutyPersonStorage.Update(model);
         }
@@ -115,6 +104,68 @@ namespace ScheduleServiceBusinessLogic.Implements
             }
 
             return _dutyPersonStorage.Delete(model) != null;
+        }
+
+        private static void NormalizeModel(DutyPersonBindingModel model)
+        {
+            model.LastName = model.LastName?.Trim() ?? string.Empty;
+            model.FirstName = model.FirstName?.Trim() ?? string.Empty;
+            model.Position = string.IsNullOrWhiteSpace(model.Position) ? null : model.Position.Trim();
+            model.Phone = string.IsNullOrWhiteSpace(model.Phone) ? null : model.Phone.Trim();
+            model.Email = string.IsNullOrWhiteSpace(model.Email) ? null : model.Email.Trim();
+        }
+
+        private static void ValidateModel(DutyPersonBindingModel model)
+        {
+            if (string.IsNullOrWhiteSpace(model.LastName))
+            {
+                throw new ArgumentException("Не указана фамилия дежурного");
+            }
+
+            if (string.IsNullOrWhiteSpace(model.FirstName))
+            {
+                throw new ArgumentException("Не указано имя дежурного");
+            }
+        }
+
+        private void CheckDuplicates(DutyPersonBindingModel model)
+        {
+            var sameName = _dutyPersonStorage.GetElement(new DutyPersonSearchModel
+            {
+                LastName = model.LastName,
+                FirstName = model.FirstName
+            });
+
+            if (sameName != null && sameName.Id != model.Id)
+            {
+                throw new InvalidOperationException("Дежурный с такими фамилией и именем уже существует");
+            }
+
+            if (!string.IsNullOrWhiteSpace(model.Phone))
+            {
+                var samePhone = _dutyPersonStorage.GetElement(new DutyPersonSearchModel
+                {
+                    Phone = model.Phone
+                });
+
+                if (samePhone != null && samePhone.Id != model.Id)
+                {
+                    throw new InvalidOperationException("Дежурный с таким телефоном уже существует");
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(model.Email))
+            {
+                var sameEmail = _dutyPersonStorage.GetElement(new DutyPersonSearchModel
+                {
+                    Email = model.Email
+                });
+
+                if (sameEmail != null && sameEmail.Id != model.Id)
+                {
+                    throw new InvalidOperationException("Дежурный с таким email уже существует");
+                }
+            }
         }
     }
 }
