@@ -14,15 +14,12 @@ namespace ScheduleServiceContracts.BindingModels
     {
         public int Id { get; set; }
 
-        [Required(ErrorMessage = "Тип записи обязателен")]
         [Display(Name = "Тип")]
         public ScheduleItemType Type { get; set; }
 
-        [Required(ErrorMessage = "Дата обязательна")]
         [Display(Name = "Дата")]
         public DateTime Date { get; set; }
 
-        [Required(ErrorMessage = "Дисциплина обязательна")]
         [StringLength(200, ErrorMessage = "Название дисциплины не должно превышать 200 символов")]
         [Display(Name = "Дисциплина")]
         public string Subject { get; set; } = string.Empty;
