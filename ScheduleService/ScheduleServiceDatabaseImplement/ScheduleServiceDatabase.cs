@@ -25,6 +25,7 @@ namespace ScheduleServiceDatabaseImplement
         public virtual DbSet<ScheduleItem> ScheduleItems { get; set; }
 
         public virtual DbSet<Teacher> Teachers { get; set; }
+        public virtual DbSet<ExternalScheduleSyncState> ExternalScheduleSyncStates { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -132,6 +133,31 @@ namespace ScheduleServiceDatabaseImplement
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasIndex(e => e.Date);
+            });
+            modelBuilder.Entity<ExternalScheduleSyncState>(entity =>
+            {
+                entity.ToTable("external_schedule_sync_states");
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.JobName)
+                    .IsRequired()
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.LastVersionId)
+                    .IsRequired();
+
+                entity.Property(e => e.LastUpdateDate)
+                    .IsRequired();
+
+                entity.Property(e => e.LastSyncDate)
+                    .IsRequired();
+
+                entity.HasIndex(e => e.JobName)
+                    .IsUnique();
+                entity.Property(e => e.ClassroomNumbersHash)
+                    .IsRequired()
+                    .HasMaxLength(128);
             });
         }
     }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using ScheduleServiceDatabaseImplement;
@@ -11,9 +12,11 @@ using ScheduleServiceDatabaseImplement;
 namespace ScheduleServiceDatabaseImplement.Migrations
 {
     [DbContext(typeof(ScheduleServiceDatabase))]
-    partial class ScheduleServiceDatabaseModelSnapshot : ModelSnapshot
+    [Migration("20260514070446_AddExternalScheduleSyncState")]
+    partial class AddExternalScheduleSyncState
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -110,11 +113,6 @@ namespace ScheduleServiceDatabaseImplement.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ClassroomNumbersHash")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("JobName")
                         .IsRequired()

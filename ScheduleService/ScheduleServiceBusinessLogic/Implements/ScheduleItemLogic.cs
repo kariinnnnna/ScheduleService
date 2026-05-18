@@ -115,6 +115,22 @@ namespace ScheduleServiceBusinessLogic.Implements
                 throw new ArgumentNullException(nameof(model));
             }
 
+            model.Subject = string.IsNullOrWhiteSpace(model.Subject)
+                ? null
+                : model.Subject.Trim();
+
+            model.ClassroomNumber = string.IsNullOrWhiteSpace(model.ClassroomNumber)
+                ? null
+                : model.ClassroomNumber.Trim();
+
+            model.GroupName = string.IsNullOrWhiteSpace(model.GroupName)
+                ? null
+                : model.GroupName.Trim();
+
+            model.TeacherName = string.IsNullOrWhiteSpace(model.TeacherName)
+                ? null
+                : model.TeacherName.Trim();
+
             if (string.IsNullOrWhiteSpace(model.Subject))
             {
                 throw new ArgumentException("Не указана дисциплина");
@@ -191,6 +207,7 @@ namespace ScheduleServiceBusinessLogic.Implements
                 throw new ArgumentException("Не указан преподаватель");
             }
         }
+
         private void ValidateClassroomAvailability(ScheduleItemBindingModel model)
         {
             var allItems = _scheduleItemStorage.GetFullList() ?? new List<ScheduleItemViewModel>();
@@ -200,19 +217,14 @@ namespace ScheduleServiceBusinessLogic.Implements
 
             var sameDateItems = allItems.Where(x => x.Date.Date == model.Date.Date);
 
-            IEnumerable<ScheduleItemViewModel> sameClassroomItems;
+            var classroomNumber = (model.ClassroomNumber ?? string.Empty).Trim();
 
-            if (model.ClassroomId.HasValue)
-            {
-                sameClassroomItems = sameDateItems.Where(x => x.ClassroomId == model.ClassroomId.Value);
-            }
-            else
-            {
-                var classroomNumber = (model.ClassroomNumber ?? string.Empty).Trim();
-                sameClassroomItems = sameDateItems.Where(x =>
-                    !string.IsNullOrWhiteSpace(x.ClassroomNumber) &&
-                    x.ClassroomNumber.Trim().Equals(classroomNumber, StringComparison.OrdinalIgnoreCase));
-            }
+            var sameClassroomItems = sameDateItems.Where(x =>
+                (model.ClassroomId.HasValue && x.ClassroomId == model.ClassroomId.Value)
+                ||
+                (!string.IsNullOrWhiteSpace(classroomNumber)
+                    && !string.IsNullOrWhiteSpace(x.ClassroomNumber)
+                    && x.ClassroomNumber.Trim().Equals(classroomNumber, StringComparison.OrdinalIgnoreCase)));
 
             if (model.Id > 0)
             {
@@ -221,11 +233,13 @@ namespace ScheduleServiceBusinessLogic.Implements
 
             foreach (var item in sameClassroomItems)
             {
-                var existingStart = item.StartTime;
-                var existingEnd = item.EndTime;
+                var existingStart = GetStartTime(item);
+                var existingEnd = GetEndTime(item);
 
                 if (!existingStart.HasValue || !existingEnd.HasValue)
+                {
                     continue;
+                }
 
                 var isIntersected = currentStart < existingEnd.Value && currentEnd > existingStart.Value;
 
@@ -233,7 +247,7 @@ namespace ScheduleServiceBusinessLogic.Implements
                 {
                     var classroomText = !string.IsNullOrWhiteSpace(item.ClassroomNumber)
                         ? item.ClassroomNumber
-                        : "указанной аудитории";
+                        : (!string.IsNullOrWhiteSpace(model.ClassroomNumber) ? model.ClassroomNumber : "указанной аудитории");
 
                     throw new InvalidOperationException(
                         $"Аудитория {classroomText} уже занята на {model.Date:dd.MM.yyyy} " +
@@ -241,6 +255,7 @@ namespace ScheduleServiceBusinessLogic.Implements
                 }
             }
         }
+
         private TimeSpan GetStartTime(ScheduleItemBindingModel model)
         {
             if (model.LessonTimeId.HasValue)
@@ -289,6 +304,46 @@ namespace ScheduleServiceBusinessLogic.Implements
             }
 
             return model.EndTime.Value;
+        }
+
+        private TimeSpan? GetStartTime(ScheduleItemViewModel model)
+        {
+            if (model.StartTime.HasValue)
+            {
+                return model.StartTime.Value;
+            }
+
+            if (model.LessonTimeId.HasValue)
+            {
+                var lessonTime = _lessonTimeStorage.GetElement(new LessonTimeSearchModel
+                {
+                    Id = model.LessonTimeId.Value
+                });
+
+                return lessonTime?.StartTime;
+            }
+
+            return null;
+        }
+
+        private TimeSpan? GetEndTime(ScheduleItemViewModel model)
+        {
+            if (model.EndTime.HasValue)
+            {
+                return model.EndTime.Value;
+            }
+
+            if (model.LessonTimeId.HasValue)
+            {
+                var lessonTime = _lessonTimeStorage.GetElement(new LessonTimeSearchModel
+                {
+                    Id = model.LessonTimeId.Value
+                });
+
+                return lessonTime?.EndTime;
+            }
+
+            return null;
         }
     }
 }
