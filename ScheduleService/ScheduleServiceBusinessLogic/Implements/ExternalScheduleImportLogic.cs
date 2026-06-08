@@ -51,6 +51,7 @@ namespace ScheduleServiceBusinessLogic.Implements
             var departmentClassrooms = model.ClassroomNumbers
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Select(NormalizeClassroomNumber)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -94,10 +95,7 @@ namespace ScheduleServiceBusinessLogic.Implements
 
             var currentWeek = await _externalScheduleApiService.GetCurrentWeekAsync();
 
-            // Важно: current-week из API соответствует текущей учебной неделе,
-            // поэтому базовую дату берём от сегодняшнего дня, а не от даты,
-            // выбранной пользователем на странице расписания.
-            var baseDate = DateTime.Today.Date;
+            var baseDate = model.BaseDate?.Date ?? DateTime.Today.Date;
             var currentMonday = GetMonday(baseDate);
 
             var groups = await _externalScheduleApiService.GetGroupsAsync();
@@ -123,8 +121,7 @@ namespace ScheduleServiceBusinessLogic.Implements
                     result.ReceivedLessonsCount += lessons.Count;
 
                     var lessonsInDepartmentClassrooms = lessons
-                        .Where(x => departmentClassrooms.Contains(
-                            NormalizeClassroomNumber(x.ClassroomNumber)))
+                        .Where(x => IsDepartmentClassroom(x.ClassroomNumber, departmentClassrooms))
                         .ToList();
 
                     result.FilteredByClassroomCount += lessonsInDepartmentClassrooms.Count;
@@ -168,90 +165,126 @@ namespace ScheduleServiceBusinessLogic.Implements
             var groupedLessons = GroupLessons(filteredLessons);
             result.GroupedLessonsCount = groupedLessons.Count;
 
-            var lessonTimes = _lessonTimeStorage.GetFullList()
-                ?? new List<LessonTimeViewModel>();
-
-            _scheduleItemStorage.DeleteImported();
-
             if (groupedLessons.Count == 0)
             {
-                SaveSyncState(
-                    jobName,
-                    currentVersion.Id,
-                    currentVersion.UpdateDate,
-                    currentClassroomNumbersHash);
-
                 result.Message =
-                    $"Импорт выполнен. Занятий в аудиториях кафедры не найдено. " +
+                    $"Импорт не применён: занятий в аудиториях кафедры не найдено. " +
+                    $"Старое импортированное расписание сохранено. " +
                     $"Версия расписания: {currentVersion.Id}.";
 
                 return result;
             }
 
+            var lessonTimes = EnsureDefaultLessonTimes();
+
+            var itemsToImport = new List<ScheduleItemBindingModel>();
+
             foreach (var lesson in groupedLessons)
             {
-                try
-                {
-                    var lessonTime = lessonTimes
-                        .FirstOrDefault(x => x.PairNumber == lesson.PairNumber);
+                var lessonTime = lessonTimes
+                    .FirstOrDefault(x => x.PairNumber == lesson.PairNumber);
 
-                    if (lessonTime == null)
-                    {
-                        result.SkippedCount++;
-                        result.Errors.Add(
-                            $"Не найдена пара №{lesson.PairNumber}. " +
-                            $"{lesson.Date:dd.MM.yyyy}, {lesson.ClassroomNumber}, {lesson.LessonName}");
-
-                        continue;
-                    }
-
-                    var parsedLesson = ParseLessonName(lesson.LessonName);
-
-                    var bindingModel = new ScheduleItemBindingModel
-                    {
-                        Type = parsedLesson.Type,
-                        Date = DateTime.SpecifyKind(lesson.Date.Date, DateTimeKind.Utc),
-
-                        LessonTimeId = lessonTime.Id,
-                        StartTime = null,
-                        EndTime = null,
-
-                        ClassroomId = null,
-                        ClassroomNumber = lesson.ClassroomNumber,
-
-                        TeacherId = null,
-                        TeacherName = lesson.TeacherName,
-
-                        GroupId = null,
-                        GroupName = string.Join(
-                            ", ",
-                            lesson.GroupNames.OrderBy(x => x, StringComparer.OrdinalIgnoreCase)),
-
-                        Subject = parsedLesson.Subject,
-                        Comment = parsedLesson.Comment,
-
-                        IsImported = true
-                    };
-
-                    _scheduleItemLogic.Create(bindingModel);
-
-                    result.CreatedCount++;
-                }
-                catch (Exception ex)
+                if (lessonTime == null)
                 {
                     result.SkippedCount++;
                     result.Errors.Add(
-                        $"{lesson.Date:dd.MM.yyyy}, {lesson.ClassroomNumber}, " +
-                        $"{lesson.LessonName}: {ex.Message}");
+                        $"Не найдена пара №{lesson.PairNumber}. " +
+                        $"{lesson.Date:dd.MM.yyyy}, {lesson.ClassroomNumber}, {lesson.LessonName}");
+
+                    continue;
                 }
+
+                var parsedLesson = ParseLessonName(lesson.LessonName);
+
+                var teacherName = string.IsNullOrWhiteSpace(lesson.TeacherName)
+                    ? "Преподаватель не указан"
+                    : lesson.TeacherName.Trim();
+
+                var groupName = lesson.GroupNames != null && lesson.GroupNames.Count > 0
+                    ? string.Join(
+                        ", ",
+                        lesson.GroupNames
+                            .Where(x => !string.IsNullOrWhiteSpace(x))
+                            .Select(x => x.Trim())
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+                    : "Группа не указана";
+
+                var subject = string.IsNullOrWhiteSpace(parsedLesson.Subject)
+                    ? "Занятие"
+                    : parsedLesson.Subject.Trim();
+
+                itemsToImport.Add(new ScheduleItemBindingModel
+                {
+                    Type = parsedLesson.Type,
+                    Date = DateTime.SpecifyKind(lesson.Date.Date, DateTimeKind.Utc),
+
+                    LessonTimeId = lessonTime.Id,
+                    StartTime = null,
+                    EndTime = null,
+
+                    ClassroomId = null,
+                    ClassroomNumber = lesson.ClassroomNumber,
+
+                    TeacherId = null,
+                    TeacherName = teacherName,
+
+                    GroupId = null,
+                    GroupName = groupName,
+
+                    Subject = subject,
+                    Comment = parsedLesson.Comment,
+
+                    IsImported = true
+                });
             }
 
             if (result.SkippedCount > 0)
             {
                 result.Message =
-                    $"Импорт выполнен с пропусками. " +
-                    $"Версия {currentVersion.Id} не сохранена как полностью синхронизированная. " +
-                    $"При следующем запуске будет выполнена повторная попытка.";
+                    $"Импорт не применён: часть занятий не удалось подготовить к сохранению. " +
+                    $"Старое импортированное расписание сохранено. " +
+                    $"Количество пропущенных занятий: {result.SkippedCount}. " +
+                    $"Версия {currentVersion.Id} не сохранена как полностью синхронизированная.";
+
+                return result;
+            }
+
+            if (itemsToImport.Count == 0)
+            {
+                result.Message =
+                    $"Импорт не применён: не сформировано ни одной записи расписания. " +
+                    $"Старое импортированное расписание сохранено. " +
+                    $"Версия расписания: {currentVersion.Id}.";
+
+                return result;
+            }
+
+            _scheduleItemStorage.DeleteImported();
+
+            foreach (var item in itemsToImport)
+            {
+                try
+                {
+                    _scheduleItemStorage.Insert(item);
+                    result.CreatedCount++;
+                }
+                catch (Exception ex)
+                {
+                    result.ErrorCount++;
+                    result.Errors.Add(
+                        $"{item.Date:dd.MM.yyyy}, {item.ClassroomNumber}, " +
+                        $"{item.Subject}: {ex.Message}");
+                }
+            }
+
+            if (result.ErrorCount > 0)
+            {
+                result.Message =
+                    $"Импорт выполнен с ошибками при сохранении. " +
+                    $"Создано записей: {result.CreatedCount}. " +
+                    $"Ошибок: {result.ErrorCount}. " +
+                    $"Версия {currentVersion.Id} не сохранена как полностью синхронизированная.";
 
                 return result;
             }
@@ -262,9 +295,101 @@ namespace ScheduleServiceBusinessLogic.Implements
                 currentVersion.UpdateDate,
                 currentClassroomNumbersHash);
 
-            result.Message = $"Импорт выполнен. Версия расписания: {currentVersion.Id}.";
+            result.Message =
+                $"Импорт выполнен. " +
+                $"Создано записей: {result.CreatedCount}. " +
+                $"Версия расписания: {currentVersion.Id}.";
 
             return result;
+        }
+
+        private List<LessonTimeViewModel> EnsureDefaultLessonTimes()
+        {
+            var lessonTimes = _lessonTimeStorage.GetFullList()
+                ?? new List<LessonTimeViewModel>();
+
+            var defaultLessonTimes = new List<LessonTimeBindingModel>
+            {
+                new()
+                {
+                    PairNumber = 1,
+                    StartTime = new TimeSpan(8, 30, 0),
+                    EndTime = new TimeSpan(9, 50, 0),
+                    Description = "1-я пара"
+                },
+                new()
+                {
+                    PairNumber = 2,
+                    StartTime = new TimeSpan(10, 0, 0),
+                    EndTime = new TimeSpan(11, 20, 0),
+                    Description = "2-я пара"
+                },
+                new()
+                {
+                    PairNumber = 3,
+                    StartTime = new TimeSpan(11, 30, 0),
+                    EndTime = new TimeSpan(12, 50, 0),
+                    Description = "3-я пара"
+                },
+                new()
+                {
+                    PairNumber = 4,
+                    StartTime = new TimeSpan(13, 30, 0),
+                    EndTime = new TimeSpan(14, 50, 0),
+                    Description = "4-я пара"
+                },
+                new()
+                {
+                    PairNumber = 5,
+                    StartTime = new TimeSpan(15, 0, 0),
+                    EndTime = new TimeSpan(16, 20, 0),
+                    Description = "5-я пара"
+                },
+                new()
+                {
+                    PairNumber = 6,
+                    StartTime = new TimeSpan(16, 30, 0),
+                    EndTime = new TimeSpan(17, 50, 0),
+                    Description = "6-я пара"
+                },
+                new()
+                {
+                    PairNumber = 7,
+                    StartTime = new TimeSpan(18, 0, 0),
+                    EndTime = new TimeSpan(19, 20, 0),
+                    Description = "7-я пара"
+                },
+                new()
+                {
+                    PairNumber = 8,
+                    StartTime = new TimeSpan(19, 30, 0),
+                    EndTime = new TimeSpan(20, 50, 0),
+                    Description = "8-я пара"
+                }
+            };
+
+            foreach (var defaultLessonTime in defaultLessonTimes)
+            {
+                var exists = lessonTimes.Any(x => x.PairNumber == defaultLessonTime.PairNumber);
+
+                if (exists)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    _lessonTimeStorage.Insert(defaultLessonTime);
+                }
+                catch
+                {
+                    // Если пара уже была создана другим запросом,
+                    // просто перечитаем список ниже.
+                }
+            }
+
+            return _lessonTimeStorage.GetFullList()
+                ?? new List<LessonTimeViewModel>();
         }
 
         private void SaveSyncState(
@@ -285,10 +410,57 @@ namespace ScheduleServiceBusinessLogic.Implements
 
         private static string NormalizeClassroomNumber(string? value)
         {
-            return (value ?? string.Empty)
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var text = value
                 .Trim()
-                .Replace(" ", string.Empty)
+                .Replace('–', '-')
+                .Replace('—', '-')
+                .Replace('-', '-')
+                .Replace('−', '-')
+                .Replace('\u00A0', ' ')
+                .Replace('\u2007', ' ')
+                .Replace('\u202F', ' ')
                 .ToLowerInvariant();
+
+            var builder = new StringBuilder();
+
+            foreach (var ch in text)
+            {
+                if (!char.IsWhiteSpace(ch))
+                {
+                    builder.Append(ch);
+                }
+            }
+
+            return builder.ToString();
+        }
+
+        private static bool IsDepartmentClassroom(
+            string? externalClassroomNumber,
+            HashSet<string> departmentClassrooms)
+        {
+            var normalizedExternalClassroom = NormalizeClassroomNumber(externalClassroomNumber);
+
+            if (string.IsNullOrWhiteSpace(normalizedExternalClassroom))
+            {
+                return false;
+            }
+
+            if (departmentClassrooms.Contains(normalizedExternalClassroom))
+            {
+                return true;
+            }
+
+            var parts = normalizedExternalClassroom
+                .Split(
+                    new[] { ',', ';' },
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            return parts.Any(departmentClassrooms.Contains);
         }
 
         private static string Normalize(string? value)
@@ -403,12 +575,22 @@ namespace ScheduleServiceBusinessLogic.Implements
                 type = ScheduleItemType.Test;
                 subject = text.Substring(4).Trim();
             }
+            else if (lower.StartsWith("зач.о"))
+            {
+                type = ScheduleItemType.Test;
+                subject = text.Substring(5).Trim();
+            }
             else if (lower.StartsWith("экз."))
             {
                 type = ScheduleItemType.Exam;
                 subject = text.Substring(4).Trim();
             }
             else if (lower.StartsWith("конс."))
+            {
+                type = ScheduleItemType.Consultation;
+                subject = text.Substring(5).Trim();
+            }
+            else if (lower.StartsWith("кр/кп"))
             {
                 type = ScheduleItemType.Consultation;
                 subject = text.Substring(5).Trim();
