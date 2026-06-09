@@ -3,11 +3,6 @@ using ScheduleServiceContracts.BindingModels;
 using ScheduleServiceContracts.BusinessLogicContracts;
 using ScheduleServiceContracts.SearchModels;
 using ScheduleServiceContracts.StorageContracts;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ScheduleServiceBusinessLogic.Implements
 {
@@ -31,12 +26,17 @@ namespace ScheduleServiceBusinessLogic.Implements
         {
             var coreGroups = await _coreApiService.GetGroupsAsync();
 
+            var actualCoreIds = coreGroups
+                .Select(x => x.Id)
+                .ToHashSet();
+
             foreach (var coreGroup in coreGroups)
             {
-                var existing = _groupStorage.GetElement(new GroupSearchModel
-                {
-                    CoreSystemId = coreGroup.Id
-                });
+                var existing = _groupStorage.GetElement(
+                    new GroupSearchModel
+                    {
+                        CoreSystemId = coreGroup.Id
+                    });
 
                 var model = new GroupBindingModel
                 {
@@ -54,18 +54,39 @@ namespace ScheduleServiceBusinessLogic.Implements
                     _groupStorage.Update(model);
                 }
             }
+
+            var localCoreGroups = _groupStorage.GetFullList()
+                .Where(x => x.CoreSystemId > 0)
+                .ToList();
+
+            var deletedFromCoreGroups = localCoreGroups
+                .Where(x => !actualCoreIds.Contains(x.CoreSystemId))
+                .ToList();
+
+            foreach (var group in deletedFromCoreGroups)
+            {
+                _groupStorage.Delete(new GroupBindingModel
+                {
+                    Id = group.Id
+                });
+            }
         }
 
         public async Task ImportTeachersAsync()
         {
             var coreTeachers = await _coreApiService.GetTeachersAsync();
 
+            var actualCoreIds = coreTeachers
+                .Select(x => x.Id)
+                .ToHashSet();
+
             foreach (var coreTeacher in coreTeachers)
             {
-                var existing = _teacherStorage.GetElement(new TeacherSearchModel
-                {
-                    CoreSystemId = coreTeacher.Id
-                });
+                var existing = _teacherStorage.GetElement(
+                    new TeacherSearchModel
+                    {
+                        CoreSystemId = coreTeacher.Id
+                    });
 
                 var model = new TeacherBindingModel
                 {
@@ -86,6 +107,22 @@ namespace ScheduleServiceBusinessLogic.Implements
                     _teacherStorage.Update(model);
                 }
             }
+
+            var localCoreTeachers = _teacherStorage.GetFullList()
+                .Where(x => x.CoreSystemId > 0)
+                .ToList();
+
+            var deletedFromCoreTeachers = localCoreTeachers
+                .Where(x => !actualCoreIds.Contains(x.CoreSystemId))
+                .ToList();
+
+            foreach (var teacher in deletedFromCoreTeachers)
+            {
+                _teacherStorage.Delete(new TeacherBindingModel
+                {
+                    Id = teacher.Id
+                });
+            }
         }
 
         public async Task ImportAllAsync()
@@ -94,7 +131,10 @@ namespace ScheduleServiceBusinessLogic.Implements
             await ImportTeachersAsync();
         }
 
-        private static string BuildTeacherShortName(string lastName, string firstName, string? patronymic)
+        private static string BuildTeacherShortName(
+            string lastName,
+            string firstName,
+            string? patronymic)
         {
             var firstInitial = string.IsNullOrWhiteSpace(firstName)
                 ? string.Empty

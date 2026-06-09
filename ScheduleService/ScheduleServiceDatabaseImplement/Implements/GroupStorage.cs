@@ -102,13 +102,30 @@ namespace ScheduleServiceDatabaseImplement.Implements
 
         public GroupViewModel? Delete(GroupBindingModel model)
         {
-            var entity = _context.Groups.FirstOrDefault(x => x.Id == model.Id);
+            var entity = _context.Groups
+                .FirstOrDefault(x => x.Id == model.Id);
+
             if (entity == null)
             {
                 return null;
             }
 
             var result = CreateModel(entity);
+
+            var linkedScheduleItems = _context.ScheduleItems
+                .Where(x => x.GroupId == entity.Id)
+                .ToList();
+
+            foreach (var scheduleItem in linkedScheduleItems)
+            {
+                if (string.IsNullOrWhiteSpace(scheduleItem.GroupName))
+                {
+                    scheduleItem.GroupName = entity.GroupName;
+                }
+
+                scheduleItem.GroupId = null;
+            }
+
             _context.Groups.Remove(entity);
             _context.SaveChanges();
 

@@ -5,6 +5,8 @@ using ScheduleServiceContracts.BusinessLogicContracts;
 using ScheduleServiceContracts.StorageContracts;
 using ScheduleServiceDatabaseImplement;
 using ScheduleServiceDatabaseImplement.Implements;
+using ScheduleServiceRestApi.HostedServices;
+using ScheduleServiceRestApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,6 +60,20 @@ builder.Services.AddHttpClient<ExternalScheduleApiService>(client =>
 
     client.BaseAddress = new Uri(baseUrl.EndsWith("/") ? baseUrl : baseUrl + "/");
 });
+
+builder.Services.AddHttpClient<MolServiceApiClient>(client =>
+{
+    var baseUrl = builder.Configuration["MolService:BaseUrl"];
+
+    if (string.IsNullOrWhiteSpace(baseUrl))
+    {
+        throw new Exception("Не указан адрес MolService:BaseUrl в appsettings.json");
+    }
+
+    client.BaseAddress = new Uri(baseUrl);
+});
+
+builder.Services.AddHostedService<WeeklyScheduleSyncHostedService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

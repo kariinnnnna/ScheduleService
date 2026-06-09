@@ -102,13 +102,30 @@ namespace ScheduleServiceDatabaseImplement.Implements
 
         public TeacherViewModel? Delete(TeacherBindingModel model)
         {
-            var entity = _context.Teachers.FirstOrDefault(x => x.Id == model.Id);
+            var entity = _context.Teachers
+                .FirstOrDefault(x => x.Id == model.Id);
+
             if (entity == null)
             {
                 return null;
             }
 
             var result = CreateModel(entity);
+
+            var linkedScheduleItems = _context.ScheduleItems
+                .Where(x => x.TeacherId == entity.Id)
+                .ToList();
+
+            foreach (var scheduleItem in linkedScheduleItems)
+            {
+                if (string.IsNullOrWhiteSpace(scheduleItem.TeacherName))
+                {
+                    scheduleItem.TeacherName = entity.TeacherName;
+                }
+
+                scheduleItem.TeacherId = null;
+            }
+
             _context.Teachers.Remove(entity);
             _context.SaveChanges();
 
